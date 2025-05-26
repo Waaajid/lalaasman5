@@ -3,7 +3,7 @@ import { useQuiz } from "@/hooks/useQuiz";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from 'canvas-confetti';
-import { PlayerAnswer } from '@/context/QuizContext'; // Added import for PlayerAnswer
+import { PlayerAnswer } from '@/context/QuizContext';
 
 interface RoundSummaryProps {
   roundNumber: number;
@@ -21,17 +21,16 @@ interface ConfettiOptions {
 }
 
 const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
-  const { gameSession, isSessionHost } = useQuiz();
+  const { gameSession, isSessionHost, nickname } = useQuiz();
   const [timeLeft, setTimeLeft] = useState(20); // 20-second timer
   const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState(true);
   
   // Get round winners from game session
   const roundWinners = gameSession?.roundWinners?.[roundNumber] || [];
-  console.log(`Round ${roundNumber} winners from gameSession:`, roundWinners);
   
   // Create a collection of team IDs that have players (teams with actual participation)
   const teamsWithPlayers = new Set<string>();
-  Object.values(gameSession?.players || {}).forEach(player => {
+  Object.entries(gameSession?.players || {}).forEach(player => {
     if (player.teamId && !player.isHost) {
       teamsWithPlayers.add(player.teamId);
     }
@@ -40,8 +39,8 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
   // If there's only one team with players and no winners yet assigned,
   // consider the only active team as the winner
   const activeTeams = Array.from(teamsWithPlayers);
-  const singleTeamWinner = activeTeams.length === 1 ? 
-    gameSession?.teams?.[activeTeams[0]]?.name : null;
+  const singleTeamWinner = activeTeams.length === 1 && gameSession?.teams ? 
+    gameSession.teams[activeTeams[0]]?.name : null;
     
   // If no winners but only one team is playing, use that team as the winner
   const effectiveWinners = roundWinners.length > 0 ? 
@@ -49,6 +48,12 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
     (singleTeamWinner ? [singleTeamWinner] : []);
     
   const hasWinners = effectiveWinners.length > 0;
+
+  // Get current user's team
+  const currentPlayer = gameSession?.players?.[nickname];
+  const currentTeamId = currentPlayer?.teamId;
+  const currentTeam = currentTeamId ? gameSession?.teams?.[currentTeamId] : null;
+  const currentTeamName = currentTeam?.name || "";
   
   useEffect(() => {
     if (hasWinners) {
@@ -67,32 +72,11 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
         });
       }
 
-      fire(0.25, {
-        spread: 26,
-        startVelocity: 55,
-      });
-
-      fire(0.2, {
-        spread: 60,
-      });
-
-      fire(0.35, {
-        spread: 100,
-        decay: 0.91,
-        scalar: 0.8
-      });
-
-      fire(0.1, {
-        spread: 120,
-        startVelocity: 25,
-        decay: 0.92,
-        scalar: 1.2
-      });
-
-      fire(0.1, {
-        spread: 120,
-        startVelocity: 45,
-      });
+      fire(0.25, { spread: 26, startVelocity: 55 });
+      fire(0.2, { spread: 60 });
+      fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+      fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+      fire(0.1, { spread: 120, startVelocity: 45 });
     }
   }, [hasWinners]);
 
@@ -119,44 +103,49 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
     onNextRound();
   };
 
-  // Group answers by team for comparison
-  const teamAnswers: Record<string, { answer: string, count: number }[]> = {};
-  
-  const allAnswersForRound: PlayerAnswer[] = [];
-  // Aggregate answers for each team
-  Object.entries(gameSession?.teams || {}).forEach(([teamId, team]) => {
-    // Skip teams with undefined or empty names
-    if (!team.name || team.name.trim() === '') {
-      return;
+  // Get current user's answers and team mates' matching answers
+  const userAnswers: {questionId: string, answer: string}[] = [];
+  const matchingTeamAnswers: {answer: string, count: number}[] = [];
+
+  if (gameSession && nickname && currentTeamId) {
+    // Get user's answers
+    const player = gameSession.players[nickname];
+    if (player && player.answers) {
+      Object.entries(player.answers).forEach(([questionId, answerData]) => {
+        if (questionId.startsWith(`r${roundNumber}`)) {
+          userAnswers.push({
+            questionId,
+            answer: answerData.answer
+          });
+        }
+      });
     }
     
-    const answers = team.answers || {};
-    const roundAnswers = Object.entries(answers)
+    // Get team's answers to find matches
+    const teamAnswers = currentTeam?.answers || {};
+    
+    // Get answers for this round's questions
+    Object.entries(teamAnswers)
       .filter(([questionId]) => questionId.startsWith(`r${roundNumber}`))
-      .map(([_, answers]) => answers)
-      .flat();
+      .forEach(([_, answers]) => {
+        // Count frequency of each answer
+        const answerCounts = answers.reduce((acc, answer) => {
+          const normalizedAnswer = answer.toLowerCase().trim();
+          acc[normalizedAnswer] = (acc[normalizedAnswer] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
 
-    // Count frequency of each answer
-    const answerCounts = roundAnswers.reduce((acc, answer) => {
-      const normalizedAnswer = answer.toLowerCase().trim();
-      acc[normalizedAnswer] = (acc[normalizedAnswer] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+        // Convert to array and sort by count
+        const teamMatches = Object.entries(answerCounts)
+          .map(([answer, count]) => ({ answer, count }))
+          .filter(({ count }) => count >= 2) // Only matching answers (2+ people)
+          .sort((a, b) => b.count - a.count);
+        
+        matchingTeamAnswers.push(...teamMatches);
+      });
+  }
 
-    // Convert to array and sort by count
-    const matchedAnswers = Object.entries(answerCounts)
-      .map(([answer, count]) => ({ answer, count }))
-      .sort((a, b) => b.count - a.count);
-    
-    // Store all answers if there's only one active team, otherwise filter to just matching answers
-    const activeTeamCount = teamsWithPlayers.size;
-    if (activeTeamCount === 1 && teamsWithPlayers.has(teamId)) {
-      teamAnswers[team.name] = matchedAnswers; // Show all answers for the only participating team
-      console.log("Only one team playing - showing all answers:", matchedAnswers);
-    } else {
-      teamAnswers[team.name] = matchedAnswers.filter(({ count }) => count >= 2); // Only show matching answers for multiple teams
-    }
-  });
+  const isUserInWinningTeam = effectiveWinners.includes(currentTeamName);
 
   return (
     <motion.div 
@@ -173,7 +162,7 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
             animate={{ opacity: 1, scale: 1 }}
             className="text-center mb-8"
           >
-            <h3 className="text-xl mb-4">🏆 Round {roundNumber} Winner{roundWinners.length > 1 ? 's' : ''}:</h3>
+            <h3 className="text-xl mb-4">🏆 Round {roundNumber} Winner{effectiveWinners.length > 1 ? 's' : ''}:</h3>
             <div className="space-y-2">
               {effectiveWinners.map((winner, index) => (
                 <motion.div 
@@ -185,7 +174,10 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
                   animate={{ opacity: 1, y: 0 }}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <span className="text-2xl font-bold text-white">🎉 {winner} 🎉</span>
+                  <span className="text-2xl font-bold text-white">
+                    🎉 {winner} 🎉
+                    {winner === currentTeamName && " (Your Team)"}
+                  </span>
                 </motion.div>
               ))}
             </div>
@@ -193,6 +185,17 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
               <p className="text-lg mt-4 text-yellow-300">
                 Tied for most matching answers!
               </p>
+            )}
+            
+            {isUserInWinningTeam && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-4 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg text-white"
+              >
+                <p className="text-xl font-bold">Congratulations! Your team won this round! 🎉</p>
+              </motion.div>
             )}
           </motion.div>
         ) : (
@@ -204,80 +207,94 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
             <div className="text-6xl mb-4">🤷‍♂️</div>
             <p className="text-xl">No winning team this round</p>
             <p className="text-lg mt-2 text-quiz-red-200">
-              {/* Check if any teams have submitted answers at all */}
-              {Object.values(gameSession?.teams || {}).some(team => 
-                Object.keys(team.answers || {}).some(qId => qId.startsWith(`r${roundNumber}`))
-              ) ? 
-                "Teams need at least 2 matching answers to win" : 
-                "No answers were submitted this round"}
+              Teams need at least 2 matching answers to win
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Simplified section showing only user's answers and team matches */}
       <div className="space-y-6">
-        <h3 className="text-xl font-bold mb-4">Team Performance</h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          {Object.entries(teamAnswers).map(([teamName, answers]) => {
-            const isWinner = roundWinners.includes(teamName);
-            return (
-              <motion.div 
-                key={teamName}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={`p-4 rounded-lg border-2 ${
-                  isWinner 
-                    ? 'bg-gradient-to-r from-yellow-900/30 to-yellow-800/30 border-yellow-500' 
-                    : 'bg-white/5 border-white/20'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    {isWinner && <span className="text-yellow-400">👑</span>}
-                    {teamName}
-                    {isWinner && <span className="text-yellow-400">👑</span>}
-                  </h4>
-                  {isWinner || (singleTeamWinner && singleTeamWinner === teamName) ? (
-                    <span className="bg-yellow-500 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold">
-                      WINNER
-                    </span>
-                  ) : null}
-                </div>
-                {answers.length > 0 ? (
-                  <ul className="space-y-2">
-                    {answers.map(({ answer, count }, index) => (
-                      <motion.li 
-                        key={answer}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ 
-                          opacity: 1, 
-                          x: 0,
-                          transition: { delay: index * 0.1 }
-                        }}
-                        className={`flex justify-between items-center px-3 py-2 rounded ${
-                          isWinner && index === 0 
-                            ? 'bg-yellow-500/20 border border-yellow-500/50' 
-                            : 'bg-white/10'
-                        }`}
-                      >
-                        <span className="capitalize">{answer}</span>
-                        <span className={`px-2 py-1 rounded-full text-sm font-bold ${
-                          isWinner && index === 0 
-                            ? 'bg-yellow-500 text-yellow-900' 
-                            : 'bg-quiz-red-500 text-white'
-                        }`}>
-                          {count} match{count > 1 ? 'es' : ''}
-                        </span>
-                      </motion.li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-white/60">No matching answers</p>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
+        <h3 className="text-xl font-bold mb-4">Your Results</h3>
+        
+        {/* User's answers */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-white/5 border border-white/20 rounded-lg"
+        >
+          <h4 className="font-bold text-lg mb-3">Your Answers</h4>
+          {userAnswers.length > 0 ? (
+            <ul className="space-y-2">
+              {userAnswers.map((answer, index) => (
+                <li 
+                  key={answer.questionId}
+                  className="p-3 bg-white/10 rounded-md"
+                >
+                  <span>Question {index + 1}: <span className="font-medium">{answer.answer}</span></span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-white/60">You didn't submit any answers this round.</p>
+          )}
+        </motion.div>
+        
+        {/* Team matches */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className={`p-4 rounded-lg border ${
+            isUserInWinningTeam
+              ? 'bg-gradient-to-r from-yellow-900/30 to-yellow-800/30 border-yellow-500'
+              : 'bg-white/5 border-white/20'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-bold text-lg">
+              {isUserInWinningTeam && "🏆 "}
+              Your Team's Matching Answers
+              {isUserInWinningTeam && " 🏆"}
+            </h4>
+            {isUserInWinningTeam && (
+              <span className="bg-yellow-500 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold">
+                WINNER
+              </span>
+            )}
+          </div>
+
+          {matchingTeamAnswers.length > 0 ? (
+            <ul className="space-y-2">
+              {matchingTeamAnswers.map(({ answer, count }, index) => (
+                <motion.li 
+                  key={`${answer}-${index}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ 
+                    opacity: 1,
+                    transition: { delay: index * 0.1 + 0.3 }
+                  }}
+                  className={`flex justify-between items-center px-3 py-2 rounded ${
+                    isUserInWinningTeam && index === 0 
+                      ? 'bg-yellow-500/20 border border-yellow-500/50' 
+                      : 'bg-white/10'
+                  }`}
+                >
+                  <span className="capitalize">{answer}</span>
+                  <span className={`px-2 py-1 rounded-full text-sm font-bold ${
+                    isUserInWinningTeam && index === 0 
+                      ? 'bg-yellow-500 text-yellow-900' 
+                      : 'bg-quiz-red-500 text-white'
+                  }`}>
+                    {count} match{count > 1 ? 'es' : ''}
+                  </span>
+                </motion.li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-white/60">Your team didn't have any matching answers.</p>
+          )}
+        </motion.div>
       </div>
 
       {isSessionHost && (
