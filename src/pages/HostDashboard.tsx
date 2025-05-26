@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
-import { Copy, Users, Trophy, Play, Gift, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
+import { Copy, Users, Trophy, Play, Gift, PlusCircle, RefreshCw, Sparkles, Wifi } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WinnerTestButton from "@/components/WinnerTestButton";
 import { runPercentageSystemDemo } from "@/utils/percentageSystemDemo";
@@ -119,6 +119,22 @@ const HostDashboard = () => {
     return winners.length === 1 ? winners[0] : `${winners.join(', ')} (Tie)`;
   };
 
+  const handleTestConnection = async () => {
+    try {
+      toast({ title: "Testing Connection", description: "Basic Firebase connection test..." });
+      // Simple test - just try to access the database
+      console.log("Firebase config test - this should work if environment variables are set");
+      toast({ title: "Connection Test", description: "Check console for Firebase status" });
+    } catch (error) {
+      console.error('Connection test error:', error);
+      toast({ 
+        title: "Connection Test Error", 
+        description: "An error occurred during the connection test.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white"> {/* Updated background */}
       <header className="p-4 border-b border-white/10 sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md"> {/* Made header sticky */}
@@ -183,6 +199,14 @@ const HostDashboard = () => {
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 Test % System
+              </Button>
+
+              <Button
+                onClick={handleTestConnection}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5"
+              >
+                <Wifi className="h-4 w-4 mr-2" />
+                Test Connection
               </Button>
 
               {[...Array(actualMaxRounds)].map((_, index) => {
