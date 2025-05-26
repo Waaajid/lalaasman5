@@ -207,7 +207,7 @@ const RoundSummary = ({ roundNumber, onNextRound }: RoundSummaryProps) => {
             <div className="text-6xl mb-4">🤷‍♂️</div>
             <p className="text-xl">No winning team this round</p>
             <p className="text-lg mt-2 text-quiz-red-200">
-              Teams need at least 2 matching answers to win
+              Winners determined by highest percentage of team members matching
             </p>
           </motion.div>
         )}

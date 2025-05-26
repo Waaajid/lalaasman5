@@ -114,9 +114,9 @@ const Instructions = () => {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl mb-2">🏆</div>
-                  <h3 className="font-semibold mb-2">Win Rounds</h3>
+                  <h3 className="font-semibold mb-2">Win with Percentages</h3>
                   <p className="text-sm text-white/80">
-                    Beat other teams by having the most matching answers
+                    Highest percentage of team members matching wins each question and round
                   </p>
                 </div>
               </div>

@@ -1,12 +1,12 @@
-// filepath: /Users/wajid/quiz-redadvace-ready-/src/pages/HostDashboard.tsx
 import { useQuiz } from "@/hooks/useQuiz";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
-import { Copy, Users, Trophy, Play, Gift, PlusCircle, RefreshCw, Sparkles } from "lucide-react"; // Added Sparkles
+import { Copy, Users, Trophy, Play, Gift, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WinnerTestButton from "@/components/WinnerTestButton";
+import { runPercentageSystemDemo } from "@/utils/percentageSystemDemo";
 
 const HostDashboard = () => {
   const { 
@@ -173,6 +173,17 @@ const HostDashboard = () => {
               </Button>
 
               <WinnerTestButton />
+
+              <Button
+                onClick={() => {
+                  runPercentageSystemDemo();
+                  toast({ title: "Demo Completed", description: "Check browser console for percentage system breakdown" });
+                }}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Test % System
+              </Button>
 
               {[...Array(actualMaxRounds)].map((_, index) => {
                 const roundNumber = index + 1;
