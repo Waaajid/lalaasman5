@@ -522,7 +522,8 @@ export function QuizProvider({ children }: { children: ReactNode }) {
 
   const joinExistingSession = useCallback(async (joinSessionId: string) => {
     try {
-      await joinGameSession(joinSessionId, nickname, nickname, selectedTeam?.id || '');
+      // Join session without a team first - team selection happens after joining
+      await joinGameSession(joinSessionId, nickname, nickname, '');
       setSessionId(joinSessionId);
       setIsSessionHost(false);
       
@@ -535,7 +536,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       setSessionError(error instanceof Error ? error.message : 'Failed to join session');
       throw error;
     }
-  }, [nickname, selectedTeam]);
+  }, [nickname]);
 
   const leaveCurrentSession = useCallback(async () => {
     if (sessionId) {

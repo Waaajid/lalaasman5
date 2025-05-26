@@ -115,15 +115,17 @@ export const joinGameSession = async (
     nickname,
     isHost: false,
     connected: true,
-    teamId,
+    teamId: teamId || '', // Allow empty teamId for initial join
     answers: {}
   });
 
-  // Update team player count
-  const teamRef = ref(db, `sessions/${sessionId}/teams/${teamId}/playerCount`);
-  const teamSnapshot = await get(teamRef);
-  const currentCount = teamSnapshot.val() || 0;
-  await set(teamRef, currentCount + 1);
+  // Only update team player count if teamId is provided
+  if (teamId) {
+    const teamRef = ref(db, `sessions/${sessionId}/teams/${teamId}/playerCount`);
+    const teamSnapshot = await get(teamRef);
+    const currentCount = teamSnapshot.val() || 0;
+    await set(teamRef, currentCount + 1);
+  }
 };
 
 export const subscribeToGameSession = (
