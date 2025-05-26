@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
-import { Copy, Users, Trophy, Play, Gift, PlusCircle, RefreshCw } from "lucide-react";
+import { Copy, Users, Trophy, Play, Gift, PlusCircle, RefreshCw, Sparkles } from "lucide-react"; // Added Sparkles
 import { toast } from "@/hooks/use-toast";
 import WinnerTestButton from "@/components/WinnerTestButton";
 
@@ -119,80 +119,87 @@ const HostDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-quiz-red-700 to-quiz-red-900 text-white">
-      <header className="p-4 border-b border-white/10">
-        <div className="container flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Host Dashboard</h1>
-          {/* Permanent Scratch Card Link - Always Visible to Host */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white"> {/* Updated background */}
+      <header className="p-4 border-b border-white/10 sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md"> {/* Made header sticky */}
+        <div className="container flex justify-between items-center mx-auto"> {/* Centered container */}
+          <h1 className="text-3xl font-bold tracking-tight">Host Dashboard</h1> {/* Enhanced title */}
+          {/* Updated Scratch Card Link Button */}
           <Button
             onClick={() => navigate("/scratch-card")}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5" // Enhanced styling
           >
-            <Gift className="h-4 w-4 mr-2" />
-            Play Scratch Rewards
+            <Sparkles className="h-5 w-5 mr-2 text-yellow-700" /> {/* Using Sparkles icon */}
+            Scratch & Reveal Prizes
           </Button>
         </div>
       </header>
 
-      <main className="container p-6 space-y-6">
-        {/* Session Code Card */}
-        <Card className="bg-white/10 border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Session Code
+      <main className="container p-6 space-y-8 mx-auto"> {/* Centered container & increased spacing */}
+        {/* Session Code Card - Enhanced Look */}
+        <Card className="bg-slate-800/60 border-slate-700 shadow-xl rounded-xl overflow-hidden"> {/* Enhanced styling */}
+          <CardHeader className="bg-slate-700/50 p-4"> {/* Header styling */}
+            <CardTitle className="text-xl text-white flex items-center gap-2">
+              <Users className="h-6 w-6 text-sky-400" /> {/* Icon styling */}
+              Game Session
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 px-6 py-3 rounded-lg text-2xl font-mono tracking-wider">
+          <CardContent className="p-6"> {/* Increased padding */}
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4"> {/* Responsive layout & gap */}
+              <div className="bg-slate-700 px-6 py-4 rounded-lg text-3xl font-mono tracking-wider text-sky-300 shadow-inner w-full sm:w-auto text-center"> {/* Enhanced styling */}
                 {sessionId || 'Generating...'}
               </div>
               <Button
                 variant="outline"
                 onClick={handleCopySessionCode}
-                className={`transition-all ${copiedToClipboard ? 'bg-green-500 text-white' : 'hover:bg-white/20'}`}
+                className={`transition-all duration-300 ease-in-out text-base px-6 py-3 rounded-lg shadow-md hover:shadow-lg border-sky-500 text-sky-300 hover:bg-sky-500 hover:text-slate-900 w-full sm:w-auto ${copiedToClipboard ? 'bg-green-500 text-white border-green-500 hover:bg-green-600' : ''}`} // Enhanced styling
               >
-                <Copy className="h-4 w-4 mr-2" />
-                {copiedToClipboard ? 'Copied!' : 'Copy'}
+                <Copy className="h-5 w-5 mr-2" />
+                {copiedToClipboard ? 'Copied!' : 'Copy Code'}
               </Button>
             </div>
-            <p className="text-white/70 mb-4">
-              Share this code with players to join the game
+            <p className="text-slate-400 mb-6 text-center sm:text-left"> {/* Adjusted text color and alignment */}
+              Share this code with players to join. Total Players: <span className="font-bold text-sky-300">{getTotalPlayers()}</span>
             </p>
             
-            {/* Control Buttons */}
-            <div className="flex flex-wrap gap-4 items-center">
+            {/* Control Buttons - Enhanced Look */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-center"> {/* Responsive grid */}
               <Button 
                 onClick={handleCreateNewSession}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 col-span-full sm:col-span-1" // Enhanced styling & span
               >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create New Session
+                <PlusCircle className="h-5 w-5 mr-2" />
+                New Session
               </Button>
 
               <WinnerTestButton />
 
               {[...Array(actualMaxRounds)].map((_, index) => {
                 const roundNumber = index + 1;
-                const gs = gameSession; // shorthand
+                const gs = gameSession;
                 
-                // Updated logic for canStartThisRound as per user request
                 const canStartThisRound = 
                   !!sessionId && 
                   getTotalPlayers() > 0 &&
                   gs?.status !== 'completed' &&
                   !(gs?.currentRound === roundNumber && gs?.currentState?.phase === 'answering');
+                
+                const isRoundActive = gs?.currentRound === roundNumber && (gs?.currentState?.phase === 'answering' || gs?.currentState?.phase === 'showing-results');
+                // Corrected: Ensure isRoundCompleted is a boolean
+                const isRoundCompleted = !!(gs?.roundWinners && gs.roundWinners[roundNumber] && gs.roundWinners[roundNumber].length > 0);
 
                 return (
                   <Button
                     key={`start-round-${roundNumber}`}
                     onClick={() => handleStartSpecificRound(roundNumber)}
-                    disabled={!canStartThisRound}
-                    className="bg-green-600 hover:bg-green-700 disabled:opacity-50 flex-grow sm:flex-grow-0"
+                    disabled={!canStartThisRound || isRoundActive || isRoundCompleted}
+                    className={`font-semibold px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 flex-grow ${
+                      isRoundCompleted ? 'bg-slate-500 cursor-not-allowed' : 
+                      isRoundActive ? 'bg-amber-500 text-amber-900 cursor-not-allowed' : 
+                      'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    } disabled:opacity-70 disabled:cursor-not-allowed`} // Enhanced styling & conditions
                   >
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Round {roundNumber}
+                    <Play className="h-5 w-5 mr-2" />
+                    {isRoundCompleted ? `Round ${roundNumber} Done` : isRoundActive ? `Round ${roundNumber} Active` : `Start Round ${roundNumber}`}
                   </Button>
                 );
               })}
@@ -200,30 +207,33 @@ const HostDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Player Overview */}
-        <Card className="bg-white/10 border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white">
-              Players ({getTotalPlayers()})
+        {/* Player Overview - Enhanced Look */}
+        <Card className="bg-slate-800/60 border-slate-700 shadow-xl rounded-xl overflow-hidden"> {/* Enhanced styling */}
+          <CardHeader className="bg-slate-700/50 p-4"> {/* Header styling */}
+            <CardTitle className="text-xl text-white flex items-center gap-2">
+              <Users className="h-6 w-6 text-lime-400" /> {/* Icon styling */}
+              Team Overview
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <CardContent className="p-6"> {/* Increased padding */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"> {/* Responsive grid & gap */}
               {teams.map((team) => {
                 const teamPlayers = getTeamPlayers(team.id);
                 return (
-                  <div key={team.id} className="bg-white/5 rounded-lg p-4">
-                    <div className={`w-8 h-8 ${team.color} rounded-full mb-2`}></div>
-                    <h3 className="font-semibold text-white mb-2">{team.name}</h3>
-                    <p className="text-sm text-white/70 mb-2">
-                      {teamPlayers.length} / {team.maxPlayers} players
+                  <div key={team.id} className="bg-slate-700/70 rounded-lg p-5 shadow-lg hover:shadow-2xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1"> {/* Enhanced styling & hover effect */}
+                    <div className="flex items-center mb-3">
+                      <div className={`w-10 h-10 ${team.color} rounded-full mr-3 shadow-md`}></div> {/* Larger team color indicator */}
+                      <h3 className="font-bold text-lg text-white truncate">{team.name}</h3> {/* Bolded and larger team name */}
+                    </div>
+                    <p className="text-sm text-slate-300 mb-3"> {/* Adjusted text color */}
+                      Players: <span className="font-semibold text-lime-300">{teamPlayers.length}</span> / {team.maxPlayers}
                     </p>
-                    <div className="space-y-1">
-                      {teamPlayers.map((playerName) => (
-                        <div key={playerName} className="text-sm text-white/80">
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-2"> {/* Max height and scroll for player list */}
+                      {teamPlayers.length > 0 ? teamPlayers.map((playerName) => (
+                        <div key={playerName} className="text-sm text-slate-200 bg-slate-600/50 px-2 py-1 rounded-md truncate"> {/* Player name styling */}
                           {playerName}
                         </div>
-                      ))}
+                      )) : <p className="text-xs text-slate-400 italic">No players yet</p>}
                     </div>
                   </div>
                 );
@@ -232,65 +242,73 @@ const HostDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Round Results - Enhanced with real-time winner display */}
-        <Card className="bg-white/10 border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Round Results & Winners
+        {/* Round Results - Enhanced with real-time winner display and improved look */}
+        <Card className="bg-slate-800/60 border-slate-700 shadow-xl rounded-xl overflow-hidden"> {/* Enhanced styling */}
+          <CardHeader className="bg-slate-700/50 p-4"> {/* Header styling */}
+            <CardTitle className="text-xl text-white flex items-center gap-2">
+              <Trophy className="h-6 w-6 text-yellow-400" /> {/* Icon styling */}
+              Round Winners & Status
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((round) => {
-                const winner = getRoundWinner(round);
-                const isCompleted = winner !== null;
-                const isCurrentRound = round === currentRound;
-                
-                return (
-                  <div key={round} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border-l-4 border-quiz-red-500">
+          <CardContent className="p-6 space-y-6"> {/* Increased padding & spacing */}
+            {[...Array(actualMaxRounds)].map((_, index) => { // Use actualMaxRounds
+              const round = index + 1;
+              const winnerData = gameSession?.roundWinners ? gameSession.roundWinners[round] : null;
+              const winner = winnerData && winnerData.length > 0 ? winnerData.join(', ') : null;
+              
+              const isCompleted = !!winner;
+              const isCurrentRound = gameSession?.currentRound === round && gameSession?.currentState?.phase !== 'round-end' && !isCompleted;
+              const isPending = !isCompleted && !isCurrentRound && (gameSession?.currentRound || 0) < round;
+              let statusText = "⏳ Pending";
+              let statusColor = "bg-slate-600 text-slate-300";
+              let borderColor = "border-slate-500";
+              let winnerComponent = null;
+
+              if (isCompleted) {
+                statusText = "✅ Completed";
+                statusColor = "bg-green-600/30 text-green-300";
+                borderColor = "border-green-500";
+                winnerComponent = (
+                  <div className="mt-1">
+                    <div className="text-sm text-yellow-300">WINNER:</div>
+                    <div className="text-lg font-bold text-yellow-400 truncate">{winner}</div>
+                  </div>
+                );
+              } else if (isCurrentRound) {
+                statusText = `🔵 In Progress (Q: ${ (gameSession?.currentQuestionIndex ?? 0) + 1 })`;
+                statusColor = "bg-sky-600/30 text-sky-300";
+                borderColor = "border-sky-500";
+              } else if ((gameSession?.currentRound || 0) > round && !isCompleted) {
+                statusText = "🟡 Awaiting Results"; // Past round, but no winner declared yet (edge case)
+                statusColor = "bg-amber-600/30 text-amber-300";
+                borderColor = "border-amber-500";
+              }
+              
+              return (
+                <div key={round} className={`p-4 rounded-lg shadow-md border-l-4 transition-all duration-300 ease-in-out ${borderColor} ${isCompleted ? 'bg-slate-700/50' : 'bg-slate-700/30'}`}>
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                        isCompleted ? 'bg-green-600' : isCurrentRound ? 'bg-yellow-600' : 'bg-gray-600'
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-inner ${
+                        isCompleted ? 'bg-green-500 text-white' : isCurrentRound ? 'bg-sky-500 text-white animate-pulse' : 'bg-slate-500 text-slate-300'
                       }`}>
                         {round}
                       </div>
-                      <span className="font-medium text-lg">Round {round}</span>
+                      <span className="font-semibold text-xl text-white">Round {round}</span>
                     </div>
-                    <div className="text-right">
-                      {isCompleted ? (
-                        <div>
-                          <div className="text-green-400 font-bold text-lg">🏆 WINNER</div>
-                          <div className="text-white font-semibold">{winner}</div>
-                        </div>
-                      ) : isCurrentRound ? (
-                        <div className="text-yellow-400 font-semibold">
-                          📍 In Progress
-                        </div>
-                      ) : (
-                        <div className="text-white/50">
-                          ⏳ Pending
-                        </div>
-                      )}
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                      {statusText}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-            
-            {gameSession && gameSession.roundWinners && Object.keys(gameSession.roundWinners).length > 0 && (
-              <div className="mt-6 p-4 bg-green-900/20 rounded-lg border border-green-500/30">
-                <h4 className="text-green-400 font-bold mb-2">🎉 Completed Rounds Summary</h4>
-                <div className="space-y-2">
-                  {Object.entries(gameSession.roundWinners).map(([round, winners]) => (
-                    <div key={round} className="flex justify-between items-center">
-                      <span className="text-white/80">Round {round}:</span>
-                      <span className="text-green-400 font-semibold">
-                        {Array.isArray(winners) ? winners.join(', ') : winners}
-                      </span>
-                    </div>
-                  ))}
+                  {winnerComponent}
                 </div>
+              );
+            })}
+            
+            {/* Overall Game Status (Optional: if you want a summary) */}
+            {gameSession?.status === 'completed' && (
+              <div className="mt-6 p-5 bg-green-700/30 rounded-lg border border-green-500/50 text-center shadow-lg">
+                <h4 className="text-2xl font-bold text-green-300 mb-2">🎉 Quiz Completed! 🎉</h4>
+                <p className="text-green-200">All rounds are finished. Check individual round winners above.</p>
               </div>
             )}
           </CardContent>
