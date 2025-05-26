@@ -1,0 +1,26 @@
+import { useContext } from 'react';
+import { QuizContext } from './QuizContext';
+
+function SomeComponent() {
+  const { currentQuestionIndex, handleAnswerSubmit, advanceToNextQuestion, currentPlayer } = useContext(QuizContext);
+
+  const handleSubmit = (answer: string) => {
+    handleAnswerSubmit(answer);
+  };
+
+  const handleNextQuestion = () => {
+    advanceToNextQuestion();
+  };
+
+  return (
+    <div>
+      {/* Display the current question based on currentQuestionIndex */}
+      <p>Question Index: {currentQuestionIndex}</p>
+      <button onClick={() => handleSubmit("Your Answer")}>Submit Answer</button>
+      {/* Conditionally render the "Next Question" button if the current player is the one who submitted the last answer */}
+      {currentPlayer === nickname && (
+        <button onClick={handleNextQuestion}>Next Question</button>
+      )}
+    </div>
+  );
+}

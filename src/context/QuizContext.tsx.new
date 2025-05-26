@@ -1,0 +1,40 @@
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { ref, set, onValue, off, get, update } from 'firebase/database';
+import { db } from '../config/firebase';
+import { 
+  createGameSession, 
+  joinGameSession, 
+  subscribeToGameSession,
+  submitAnswer as submitSessionAnswer,
+  updateGameState,
+  calculateRoundWinners,
+  leaveSession,
+  GameSession
+} from '../services/gameSession';
+
+// Define all your interfaces...
+
+// Create the context
+const QuizContext = createContext<QuizContextProps | undefined>(undefined);
+
+export function QuizProvider({ children }: { children: ReactNode }) {
+  // All your state declarations and functions...
+
+  return (
+    <QuizContext.Provider value={contextValue}>
+      {children}
+    </QuizContext.Provider>
+  );
+}
+
+// Export the hook
+export function useQuiz() {
+  const context = useContext(QuizContext);
+  if (context === undefined) {
+    throw new Error('useQuiz must be used within a QuizProvider');
+  }
+  return context;
+}
+
+// Export the context
+export { QuizContext };
