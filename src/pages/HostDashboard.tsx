@@ -125,11 +125,11 @@ const HostDashboard = () => {
           <h1 className="text-3xl font-bold tracking-tight">Host Dashboard</h1> {/* Enhanced title */}
           {/* Updated Scratch Card Link Button */}
           <Button
-            onClick={() => navigate("/scratch-card")}
+            onClick={() => window.open("https://lalaasman5.vercel.app/host-dashboard", "_blank")}
             className="bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5" // Enhanced styling
           >
             <Sparkles className="h-5 w-5 mr-2 text-yellow-700" /> {/* Using Sparkles icon */}
-            Scratch & Reveal Prizes
+            Scratch and Reveal
           </Button>
         </div>
       </header>
