@@ -646,136 +646,34 @@ export function QuizProvider({ children }: { children: ReactNode }) {
   const determineAndStoreRoundWinner = useCallback(async (roundToProcess: number, currentSessionData: GameSession) => {
     if (!isMultiplayer || !sessionId || !currentSessionData || !currentSessionData.players) return null;
 
-    const allAnswersFromSession: PlayerAnswer[] = [];
-    Object.entries(currentSessionData.players).forEach(([playerId, playerData]) => {
-        // Skip host if they are part of players list and don't submit answers
-        if (playerData.isHost) return; 
-
-        const playerTeamId = playerData.teamId;
-        if (!playerTeamId) return; // Skip players not on a team
-
-        const teamDetails = teams.find(t => t.id === playerTeamId); 
-        const teamName = teamDetails ? teamDetails.name : (playerTeamId || 'Unknown Team');
-
-        if (playerData.answers) { 
-            Object.entries(playerData.answers).forEach(([questionId, answerDataFromFirebase]) => {
-                // answerDataFromFirebase is { answer: string; timeRemaining: number } as stored by gameSession.ts
-                const typedAnswerData = answerDataFromFirebase as { answer: string; timeRemaining: number };
-                
-                // Find the question in the 'questions' array to get its roundId
-                const questionDetails = questions.find(q => q.id === questionId); 
-
-                if (questionDetails && questionDetails.roundId === roundToProcess && typeof typedAnswerData.answer === 'string') {
-                    allAnswersFromSession.push({
-                        playerId,
-                        teamName,
-                        roundNumber: roundToProcess, // This is the round we are processing
-                        questionId,
-                        answer: typedAnswerData.answer,
-                    });
-                }
-            });
-        }
-    });
+    // Import the new percentage-based winner determination
+    const { determineRoundWinner, logPerformanceBreakdown } = await import('../utils/percentageWinners');
     
-    // Group answers by team
-    const answersByTeam: { [teamName: string]: { [answer: string]: string[] } } = {};
-    // Also track all team names that have submitted any answers
-    const teamsWithAnswers = new Set<string>();
+    // Use the new percentage-based scoring system
+    const { winners, performances } = determineRoundWinner(currentSessionData, roundToProcess);
     
-    allAnswersFromSession.forEach(ans => {
-        teamsWithAnswers.add(ans.teamName);
-        if (!answersByTeam[ans.teamName]) answersByTeam[ans.teamName] = {};
-        const processedAnswer = ans.answer.toLowerCase().trim();
-        if (!answersByTeam[ans.teamName][processedAnswer]) answersByTeam[ans.teamName][processedAnswer] = [];
-        answersByTeam[ans.teamName][processedAnswer].push(ans.playerId);
-    });
-
-    let winningTeamName: string | null = null;
+    // Log detailed breakdown for debugging
+    console.log(`🎯 QuizContext: NEW PERCENTAGE-BASED WINNER CALCULATION for Round ${roundToProcess}:`);
+    logPerformanceBreakdown(currentSessionData, roundToProcess);
     
-    const teamStats: Array<{
-        name: string;
-        highestMatchCount: number;
-        totalMatchedPlayers: number;
-        hasMatches: boolean;
-    }> = [];
-
-    // Process statistics for each team
-    Object.entries(answersByTeam).forEach(([teamName, teamAnswers]) => {
-        // Get matched answers (2+ players giving same answer)
-        const teamMatchedDetails = Object.entries(teamAnswers)
-            .map(([answer, players]) => ({ answer, players, count: players.length }))
-            .filter(match => match.count >= 2) // Only consider answers matched by 2 or more players
-            .sort((a, b) => b.count - a.count);
-
-        // Calculate stats even if no matches, will be used in case only one team is playing
-        const highestMatchCount = teamMatchedDetails.length > 0 ? teamMatchedDetails[0].count : 0;
-        const totalMatchedPlayers = teamMatchedDetails.reduce((sum, m) => sum + m.count, 0);
-        const hasMatches = teamMatchedDetails.length > 0;
-        
-        teamStats.push({ 
-            name: teamName, 
-            highestMatchCount, 
-            totalMatchedPlayers,
-            hasMatches 
-        });
-    });
-    
-    // Identify active teams - teams that have players with submitted answers for this round
-    const allTeams = new Set(teams.map(t => t.name));
-    const activeTeams = new Set<string>();
-    Object.entries(currentSessionData.players).forEach(([_, player]) => {
-        if (player.teamId && !player.isHost) {
-            const team = teams.find(t => t.id === player.teamId);
-            if (team) activeTeams.add(team.name);
-        }
-    });
-    console.log(`Active teams: ${Array.from(activeTeams).join(', ')}`);
-    console.log(`Teams with answers: ${Array.from(teamsWithAnswers).join(', ')}`);
-
-    // Decision logic for winner
-    if (teamStats.length > 0) {
-        // First, check if there's only one active team that has submitted answers (regardless of matches)
-        if ((activeTeams.size === 1 && teamsWithAnswers.size === 1) || 
-            (teamsWithAnswers.size === 1 && teamStats.length === 1)) {
-            // If only one team is active and has submitted answers, they win by default
-            winningTeamName = teamStats[0].name;
-            console.log('Only one active team playing, awarding win by default to:', winningTeamName);
-        } 
-        // Otherwise, use the normal matching rule (teams with 2+ matching answers)
-        else {
-            const teamsWithMatches = teamStats.filter(team => team.hasMatches);
-            
-            if (teamsWithMatches.length > 0) {
-                // Normal case: at least one team has players with matching answers
-                teamsWithMatches.sort((a, b) => {
-                    if (b.highestMatchCount !== a.highestMatchCount) {
-                        return b.highestMatchCount - a.highestMatchCount;
-                    }
-                    return b.totalMatchedPlayers - a.totalMatchedPlayers;
-                });
-                winningTeamName = teamsWithMatches[0].name;
-                console.log('Team with most matching answers wins:', winningTeamName);
-            } 
-        }
-    }
+    console.log('QuizContext: Final determined winners:', winners);
 
     // Store the winner(s) in Firebase
     const winnerUpdateForFirebase: Record<number, string[]> = {
          ...(currentSessionData.roundWinners || {}),
-         [roundToProcess]: winningTeamName ? [winningTeamName] : [] // Store as an array, even if single winner
+         [roundToProcess]: winners // Store as an array
     };
 
     try {
         await handleUpdateGameState({ roundWinners: winnerUpdateForFirebase });
-        console.log(`Round ${roundToProcess} winner determined:`, winningTeamName);
+        console.log(`Round ${roundToProcess} winner determined:`, winners);
     } catch (error) {
         console.error(`Error storing winner for round ${roundToProcess}:`, error);
         setSessionError(error instanceof Error ? error.message : 'Failed to store winner');
     }
     
-    return winningTeamName;
-  }, [sessionId, isMultiplayer, teams, handleUpdateGameState, questions, setSessionError]);
+    return winners.length > 0 ? winners[0] : null;
+  }, [sessionId, isMultiplayer, handleUpdateGameState, setSessionError]);
 
   const hostHandleRoundEndAndProceed = useCallback(async () => {
     if (!isSessionHost || !sessionId || !gameSession) return;

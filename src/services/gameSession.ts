@@ -252,47 +252,31 @@ export const calculateRoundWinners = async (
   
   if (!session) return [];
   
-  // Get all answers for this round
-  const roundAnswers: { [teamId: string]: { [answer: string]: number } } = {};
+  // Import the new percentage-based winner determination
+  const { determineRoundWinner, logPerformanceBreakdown } = await import('../utils/percentageWinners');
   
-  // Count matching answers per team
-  Object.entries(session.players || {}).forEach(([playerId, player]) => {
-    if (player.isHost) return; // Skip host
-    
-    const teamId = player.teamId;
-    if (!teamId) return;
-    
-    // Get answers for this round
-    Object.entries(player.answers || {}).forEach(([questionId, answerData]) => {
-      if (questionId.startsWith(`r${roundNumber}`)) {
-        const answer = answerData.answer?.toLowerCase().trim();
-        if (!answer) return;
-        
-        if (!roundAnswers[teamId]) roundAnswers[teamId] = {};
-        if (!roundAnswers[teamId][answer]) roundAnswers[teamId][answer] = 0;
-        roundAnswers[teamId][answer]++;
-      }
-    });
+  // Use the new percentage-based scoring system
+  const { winners, performances } = determineRoundWinner(session, roundNumber);
+  
+  // Log detailed breakdown for debugging
+  console.log(`🎯 NEW PERCENTAGE-BASED WINNER CALCULATION for Round ${roundNumber}:`);
+  logPerformanceBreakdown(session, roundNumber);
+  
+  console.log('Round winners calculation:', { 
+    roundNumber, 
+    winners,
+    performances: performances.map(p => ({
+      team: p.teamName,
+      totalPercentage: p.totalPercentage,
+      questionBreakdown: p.questionPerformances.map(q => ({
+        questionId: q.questionId,
+        percentage: q.matchingPercentage,
+        matches: `${q.highestMatchingCount}/${q.totalPlayers}`
+      }))
+    }))
   });
   
-  // Find teams with most matching answers
-  let maxMatches = 0;
-  let winningTeams: string[] = [];
-  
-  Object.entries(roundAnswers).forEach(([teamId, answers]) => {
-    const maxTeamMatches = Math.max(...Object.values(answers));
-    if (maxTeamMatches >= 2) { // Need at least 2 matching answers
-      if (maxTeamMatches > maxMatches) {
-        maxMatches = maxTeamMatches;
-        winningTeams = [session.teams[teamId]?.name || teamId];
-      } else if (maxTeamMatches === maxMatches) {
-        winningTeams.push(session.teams[teamId]?.name || teamId);
-      }
-    }
-  });
-  
-  console.log('Round winners calculation:', { roundNumber, roundAnswers, winningTeams, maxMatches });
-  return winningTeams;
+  return winners;
 };
 
 export const publishRoundWinners = async (
